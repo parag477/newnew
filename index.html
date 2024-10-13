@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Makeup Application</title>
+</head>
+<body>
+    <h1>Real-time Makeup Application</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <img id="processed-frame" alt="Processed Frame" />
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const processedFrame = document.getElementById('processed-frame');
+
+        // Get access to the user's webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("Error accessing webcam:", err);
+            });
+
+        // Connect to the WebSocket server
+        const ws = new WebSocket("ws://localhost:8000/ws");
+
+        ws.onmessage = function(event) {
+            processedFrame.src = `data:image/jpeg;base64,${event.data}`;
+        };
+
+        // Capture frames from the webcam and send to the server
+        function captureFrame() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataURL = canvas.toDataURL('image/jpeg');
+            const base64Image = dataURL.split(',')[1]; // Remove 'data:image/jpeg;base64,' part
+
+            // Send base64 image to the server
+            ws.send(base64Image);
+        }
+
+        setInterval(captureFrame, 100); // Capture and send frames every 100ms
+    </script>
+</body>
+</html>
